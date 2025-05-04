@@ -1,0 +1,17 @@
+{
+  "name": "stonks",
+  "version": "0.0.1",
+  "description": "Find information about stocks",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "lucas.b.eisenberg@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "@azure-rest/ai-inference": "^1.0.0-beta.6",
+    "@azure/core-auth": "^1.9.0",
+    "express": "^5.1.0",
+    "yahoo-finance2": "^2.13.3"
+  }
+}

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stocks</title>
+</head>
+
+<body>
+
+
+    <header id="header">
+        <h1>Welcome to Stonks</h1>
+    </header>
+
+    <form id="contact-form" action="/" method="POST" onsubmit="event.preventDefault(); searchStonk();">
+        <label for="stonk">Stock to search:</label>
+        <input type="text" id="stonk" name="stonk" required>
+        <button type="submit">Submit</button>
+
+    </form>
+
+    <button id="chat-bot-button" onclick="queryChatBot()">Ask the expert</button>
+
+    <p id="expert-says" class="hidden">The expert says: <span id="expert-response"></span></p>
+
+
+    <script>
+        async function queryChatBot() {
+
+            try {
+                const stonk = document.getElementById('stonk').value;
+                const titleElement = document.getElementById('stonk-result-title');
+
+                const stonkData = await fetchStonkPrices(stonk, 30);
+
+                const expertSaysElement = document.getElementById('expert-says');
+                expertSaysElement.classList.add('hidden');
+
+                const response = await fetch('/chat-bot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'Hello, you are a helpful chatbot giving investment advice for stocks ' +
+                            'Here is some data for a certain stonk, ' +
+                            'give advice on this stock ' +
+                            'Please respond with only one word, that word must be a single verb that must be "buy", "sell", or "hold".' +
+                            `Stonk: ${stonk}, Prices by date: ${stonkData.map(day => `Date: ${day.date}, Open: ${day.open}`).join('\n')}`
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to query chat bot');
+                }
+
+                const data = await response.json();
+
+                const expertResponseElement = document.getElementById('expert-response');
+                expertResponseElement.innerText = data.reply;
+                expertSaysElement.classList.remove('hidden');
+                console.log(`Chat Bot Response: ${data.reply}`);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+
+    <section id="stonk-result">
+        <h2 id="stonk-result-title" class="hidden">Stock Result:</h2>
+
+        <p id="result"></p>
+        <canvas id="stonk-chart" width="400" height="200"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </section>
+    <script>
+
+        async function fetchStonkPrices(stonk, days) {
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ stonk, days }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stock data');
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error(error);
+                alert('Error, that stock does not exist');
+            }
+        }
+
+        async function searchStonk() {
+            try {
+                const stonk = document.getElementById('stonk').value;
+                const data = await fetchStonkPrices(stonk, 100);
+                const titleElement = document.getElementById('stonk-result-title');
+                titleElement.innerText = `Stock Result: ${stonk}`;
+                console.log(`Stock: ${stonk}, Prices by date: ${data.map(day => `Date: ${day.date}, Open: ${day.open}`).join('\n')}`);
+                titleElement.classList.remove('hidden');
+                const resultElement = document.getElementById('result');
+                resultElement.innerText = `Stock: ${stonk}, current price: ${data[0].open.toFixed(2)} USD`;
+                const labels = data.map(day => day.date);
+                const formattedLabels = labels.map(date => {
+                    const options = { month: 'long' };
+                    const getOrdinalSuffix = (day) => {
+                        if (day > 3 && day < 21) return 'th';
+                        switch (day % 10) {
+                            case 1: return 'st';
+                            case 2: return 'nd';
+                            case 3: return 'rd';
+                            default: return 'th';
+                        }
+                    };
+                    const day = new Date(date).getDate();
+                    const year = new Date(date).getFullYear();
+                    const formattedDate = new Date(date).toLocaleDateString(undefined, options);
+                    return `${formattedDate} ${day}${getOrdinalSuffix(day)} ${year}`;
+                });
+                const prices = data.map(day => day.open);
+
+
+                const existingChart = document.getElementById('stonk-chart');
+                if (existingChart) {
+                    existingChart.remove();
+                    const newCanvas = document.createElement('canvas');
+                    newCanvas.id = 'stonk-chart';
+                    newCanvas.width = 400;
+                    newCanvas.height = 200;
+                    document.getElementById('stonk-result').appendChild(newCanvas);
+                }
+                const ctx = document.getElementById('stonk-chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: formattedLabels,
+                        datasets: [{
+                            label: `${stonk} Prices`,
+                            data: prices,
+                            borderColor: 'rgba(34, 200, 5, 1)',
+                            backgroundColor: 'rgba(34, 200, 5, 0.5)',
+                            borderWidth: 1,
+                        }],
+                    },
+                    options: {
+                        responseive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date',
+                                },
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Share Price (USD)',
+                                },
+                            },
+                        },
+                    },
+                });
+
+                const canvas = document.getElementById('stonk-chart');
+                canvas.width = 300;
+                canvas.height = 150;
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+    <style>
+        #stonk-chart {
+            width: 1800px;
+            height: 800px;
+        }
+
+        #stonk-result {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        #contact-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 300px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #contact-form label {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        #contact-form input {
+            font-size: 1.2rem;
+            padding: 10px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #contact-form button {
+            font-size: 1.2rem;
+            padding: 10px 20px;
+        }
+
+        #chat-bot-button {
+            font-size: 1.2rem;
+            padding: 10px 20px;
+            margin-top: 10px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #expert-says {
+            font-size: 1.6rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        #header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #stonk-result-title {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        #result {
+            font-size: 1.6rem;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        body {
+            background-color: lightblue;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+    </main>
+    <footer>
+        <p>&copy; 2032 Stonks. Some rights reserved.</p>
+    </footer>
+</body>
+
+</html>
