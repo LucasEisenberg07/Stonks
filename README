@@ -6,7 +6,7 @@ This is obviously a joke, do not take investment advice from an AI.
 
 ## To run this project:
 
-1. Run ```npm instal```
+1. Run ```npm install```
 2. To start the project ```node index.mjs```
 3. Go to http://localhost:1000/ to see the website in action
 4. Have fun!
